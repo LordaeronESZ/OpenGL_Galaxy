@@ -21,7 +21,7 @@ GLuint renderingProgram;
 GLuint vao[numVAOs];
 GLuint vbo[numVBOs];
 GLuint sunTexture, earthTexture, moonTexture; // 纹理
-Sphere sunSphere;
+Sphere mySphere;
 Sphere earthSphere;
 std::stack<glm::mat4> mvStack; // 矩阵堆栈
 
@@ -31,18 +31,18 @@ float aspect;
 glm::mat4 pMat, vMat, mMat, mvMat, invTrMat; // 变换矩阵
 
 void setupVertices() {
-	sunSphere = Sphere(128);
+	mySphere = Sphere(128);
 
 	// 初始化 sun 的数据
-	std::vector<int> ind = sunSphere.getIndices();
-	std::vector<glm::vec3> vert = sunSphere.getVertices();
-	std::vector<glm::vec2> tex = sunSphere.getTexCoords();
-	std::vector<glm::vec3> norm = sunSphere.getNormals();
+	std::vector<int> ind = mySphere.getIndices();
+	std::vector<glm::vec3> vert = mySphere.getVertices();
+	std::vector<glm::vec2> tex = mySphere.getTexCoords();
+	std::vector<glm::vec3> norm = mySphere.getNormals();
 
 	std::vector<float> pvalues;
 	std::vector<float> tvalues;
 	std::vector<float> nvalues;
-	for (int i = 0; i < sunSphere.getNumVertices(); i++) {
+	for (int i = 0; i < mySphere.getNumVertices(); i++) {
 		pvalues.emplace_back(vert[i].x);
 		pvalues.emplace_back(vert[i].y);
 		pvalues.emplace_back(vert[i].z);
@@ -86,15 +86,15 @@ void drawSphere(const GLuint& texture) {
 
 	// 指定顶点属性
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
 	glEnableVertexAttribArray(0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
 	glEnableVertexAttribArray(1);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
 	glEnableVertexAttribArray(2);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo[3]);
@@ -103,10 +103,13 @@ void drawSphere(const GLuint& texture) {
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
 
-	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_DEPTH_TEST); // 开启深度测试
 	glDepthFunc(GL_LEQUAL);
 
-	glDrawElements(GL_TRIANGLES, sunSphere.getNumIndices(), GL_UNSIGNED_INT, 0);
+	glEnable(GL_CULL_FACE); // 开启隐藏面消除
+	glFrontFace(GL_CCW);
+
+	glDrawElements(GL_TRIANGLES, mySphere.getNumIndices(), GL_UNSIGNED_INT, 0);
 }
 
 void init(GLFWwindow* window) {
@@ -114,6 +117,7 @@ void init(GLFWwindow* window) {
 	cameraX = 0.0f; cameraY = 0.0f; cameraZ = 8.0f;
 	sunLocX = 0.0f; sunLocY = 0.0f; sunLocZ = 0.0f;
 	setupVertices();
+	// 加载纹理贴图
 	sunTexture = loadTexture("sun.jpg");
 	earthTexture = loadTexture("earth.jpg");
 	moonTexture = loadTexture("moon.jpg");
@@ -182,16 +186,18 @@ int main() {
 	if (glewInit() != GLEW_OK) {
 		exit(EXIT_FAILURE);
 	}
-	glfwSwapInterval(1);
+	// glfwSwapInterval(1); // 开启 V-Sync
 	init(window);
 	double fpsTime = glfwGetTime();
 	int framerate = 0;
+	long long framerateSum = 0;
 	while (!glfwWindowShouldClose(window)) {
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		if (glfwGetTime() - fpsTime > 1) {
 			system("cls");
-			std::cout << "FPS: " << framerate << std::endl;
+			std::cout << "Cur FPS: " << framerate << std::endl;
+			std::cout << "Avg FPS: " << framerateSum / fpsTime << std::endl;
 			fpsTime = glfwGetTime();
 			framerate = 0;
 		}
@@ -199,6 +205,7 @@ int main() {
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 		framerate++;
+		framerateSum++;
 	}
 	glfwDestroyWindow(window);
 	glfwTerminate();
